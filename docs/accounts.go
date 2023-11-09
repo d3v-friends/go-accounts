@@ -2,7 +2,9 @@ package docs
 
 import (
 	"context"
+	"fmt"
 	"github.com/d3v-friends/go-pure/fnReflect"
+	"github.com/d3v-friends/mango"
 	"github.com/d3v-friends/mango/mMigrate"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -11,7 +13,11 @@ import (
 	"time"
 )
 
-const docAccount = "accounts"
+const (
+	docAccount             = "accounts"
+	fAccountDataIdentifier = "data.identifier"
+	fAccountDataProperties = "data.properties"
+)
 
 type (
 	Account struct {
@@ -55,11 +61,7 @@ var mgAccount = mMigrate.FnMigrateList{
 			{
 				Keys: bson.D{
 					{
-						Key:   "data.identifiers.key",
-						Value: 1,
-					},
-					{
-						Key:   "data.identifier.value",
+						Key:   "data.identifiers",
 						Value: 1,
 					},
 				},
@@ -70,11 +72,7 @@ var mgAccount = mMigrate.FnMigrateList{
 			{
 				Keys: bson.D{
 					{
-						Key:   "data.properties.key",
-						Value: 1,
-					},
-					{
-						Key:   "data.properties.value",
+						Key:   "data.properties",
 						Value: 1,
 					},
 				},
@@ -85,6 +83,7 @@ var mgAccount = mMigrate.FnMigrateList{
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
+// Creator
 
 type ICreateAccount struct {
 	Identifiers []*KV
@@ -93,11 +92,98 @@ type ICreateAccount struct {
 }
 
 func CreateAccount(ctx context.Context, i *ICreateAccount) (res *Account, err error) {
-	panic("not impl")
+	var now = time.Now()
+
+	res = &Account{
+		Id: primitive.NewObjectID(),
+		Data: &AccountData{
+			Identifiers: i.Identifiers,
+			Verifiers:   i.Verifiers,
+			Properties:  i.Properties,
+			CreatedAt:   now,
+		},
+		History:   make([]*AccountData, 0),
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	var col = mango.GetColP(ctx, docAccount)
+
+	if _, err = col.InsertOne(ctx, res); err != nil {
+		return
+	}
+
+	return
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
+// Reader
 
-type IReadAccount struct {
-	Ids []*primitive.ObjectID
+func ReadOneAccount(
+	ctx context.Context,
+	i mango.IfFilter,
+	opts ...*options.FindOneOptions,
+) (*Account, error) {
+	return mango.ReadOne[Account](ctx, i, opts...)
+}
+
+func ReadAllAccount(
+	ctx context.Context,
+	i mango.IfFilter,
+	opts ...*options.FindOptions,
+) ([]*Account, error) {
+	return mango.ReadAll[Account](ctx, i, opts...)
+}
+
+func ReadListAccount(
+	ctx context.Context,
+	i mango.IfFilter,
+	p mango.IfPager,
+	opts ...*options.FindOptions,
+) (ls []*Account, total int64, err error) {
+	return mango.ReadList[Account](ctx, i, p, opts...)
+}
+
+/* ------------------------------------------------------------------------------------------------------------ */
+// Filters
+
+// AccountFilter
+// _id 는 $in operator 로 검색한다
+// properties 는 $and 로 검색한다
+type AccountFilter struct {
+	Ids        []primitive.ObjectID
+	Identifier *KV
+	Properties []KV
+}
+
+func (x AccountFilter) Filter() (filter bson.M, err error) {
+	filter = make(bson.M)
+	if len(x.Ids) != 0 {
+		filter[fId] = bson.M{
+			"$in": x.Ids,
+		}
+	}
+
+	if x.Identifier != nil {
+		filter[fAccountDataIdentifier] = bson.M{
+			"$elemMatch": *x.Identifier,
+		}
+	}
+
+	if len(x.Properties) != 0 {
+		filter[fAccountDataProperties] = bson.M{
+			"$all": x.Properties,
+		}
+	}
+
+	if len(filter) == 0 {
+		err = fmt.Errorf("empty account_filter")
+		return
+	}
+
+	return
+}
+
+func (x AccountFilter) ColNm() string {
+	return docAccount
 }

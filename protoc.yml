@@ -1,0 +1,7 @@
+protoPath: "/proto"
+outPath: "/rpc"
+packageNm: "service"
+include:
+  - "account.proto"
+import:
+#  - "models.proto"

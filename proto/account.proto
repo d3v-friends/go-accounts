@@ -1,0 +1,18 @@
+syntax = "proto3";
+//import "models.proto";
+
+service SvAccount {
+  rpc create(ICreateAccount) returns (OCreateAccount);
+}
+
+message ICreateAccount {
+  string username = 1;
+}
+
+message OCreateAccount {
+  Account value = 1;
+}
+
+message Account {
+  string id = 1;
+}

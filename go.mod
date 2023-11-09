@@ -3,8 +3,16 @@ module github.com/d3v-friends/go-accounts
 go 1.21.3
 
 require (
-	github.com/d3v-friends/go-pure v0.0.35
-	github.com/d3v-friends/mango v0.0.23
+	github.com/d3v-friends/go-pure v0.0.37
+	github.com/d3v-friends/mango v0.0.25
+)
+
+require (
+	github.com/d3v-friends/go-grpc v0.0.7 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/spf13/cobra v1.7.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (

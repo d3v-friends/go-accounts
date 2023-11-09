@@ -4,6 +4,12 @@ import (
 	"fmt"
 )
 
+const (
+	fId = "_id"
+)
+
+/* ------------------------------------------------------------------------------------------------------------ */
+
 type KV struct {
 	Key   string `bson:"key"`
 	Value string `bson:"value"`
