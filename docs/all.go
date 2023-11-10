@@ -29,3 +29,24 @@ func (x KVs) Find(key string) (res *KV, err error) {
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
+
+type VerifyMode string
+
+func (x VerifyMode) IsValid() bool {
+	for _, mode := range VerifyModeAll {
+		if mode == x {
+			return true
+		}
+	}
+	return false
+}
+
+const (
+	VerifyModeCompare VerifyMode = "compare"
+	VerifyModeOtp     VerifyMode = "opt"
+)
+
+var VerifyModeAll = []VerifyMode{
+	VerifyModeCompare,
+	VerifyModeOtp,
+}

@@ -1,1 +1,1 @@
-go run github.com/d3v-friends/go-grpc protoc --config=protoc.yaml
+go run github.com/d3v-friends/go-grpc protoc --config=protoc.yml

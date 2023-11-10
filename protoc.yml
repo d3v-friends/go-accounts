@@ -1,7 +1,7 @@
-protoPath: "/proto"
-outPath: "/rpc"
-packageNm: "service"
+protoPath: "./rpc/proto"
+outPath: "./rpc"
+packageNm: "/service"
 include:
   - "account.proto"
 import:
-#  - "models.proto"
+  - "models.proto"
