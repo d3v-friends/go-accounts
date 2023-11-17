@@ -154,13 +154,13 @@ func CreateSession(
 
 	var docSystem = GetDocSystem(ctx)
 	var jwtSecret = GetJwtSecret(ctx)
-	var jwt = fnJWT.NewV1[DocSession](
+	var v1 = fnJWT.NewV1[DocSession](
 		jwtSecret,
 		docSystem.Data.Session.Issuer,
 		docSystem.Data.Session.ExpireAt,
 	)
 
-	if token, err = jwt.Encode(*doc); err != nil {
+	if token, err = v1.Encode(*doc); err != nil {
 		return
 	}
 

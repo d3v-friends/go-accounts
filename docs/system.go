@@ -2,6 +2,8 @@ package docs
 
 import (
 	"context"
+	"time"
+
 	"github.com/d3v-friends/go-pure/fnCtx"
 	"github.com/d3v-friends/go-pure/fnReflect"
 	"github.com/d3v-friends/mango"
@@ -9,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
 )
 
 const (
@@ -50,15 +51,15 @@ func (x *DocSystem) GetMigrateList() mMigrate.FnMigrateList {
 var mgSystem = mMigrate.FnMigrateList{
 	func(ctx context.Context, col *mongo.Collection) (memo string, err error) {
 		memo = "create init system"
-		var model = mango.NewMDoc[System](docSystem)
-		model.Data = &System{
+		var model = mango.NewDoc[System](docSystem, &System{
 			Session: &SystemSession{
 				Issuer:         GetJwtIssuer(ctx),
 				ExpireAt:       -1,
 				CheckIp:        false,
 				CheckUserAgent: true,
 			},
-		}
+		})
+
 		err = model.Save(ctx)
 		return
 	},
