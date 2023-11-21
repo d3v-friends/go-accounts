@@ -2,15 +2,16 @@ package docs
 
 import (
 	"context"
-	"time"
-
+	"fmt"
 	"github.com/d3v-friends/go-pure/fnCtx"
+	"github.com/d3v-friends/go-pure/fnLogger"
 	"github.com/d3v-friends/go-pure/fnReflect"
 	"github.com/d3v-friends/mango"
 	"github.com/d3v-friends/mango/mMigrate"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"time"
 )
 
 const (
@@ -88,6 +89,81 @@ func ReadSystem(ctx context.Context) (res *DocSystem, err error) {
 	}
 	res = fnReflect.ToPointer(DocSystem(*system))
 	return
+}
+
+/* ------------------------------------------------------------------------------------------------------------ */
+
+type (
+	IUpdateSystem struct {
+		Session *IUpdateSystemSession
+	}
+
+	IUpdateSystemSession struct {
+		Issuer         *string
+		ExpireAt       *time.Duration
+		CheckIp        *bool
+		CheckUserAgent *bool
+	}
+)
+
+func (x IUpdateSystem) Update() (update bson.M, err error) {
+	var now = time.Now()
+	var set = bson.M{
+		"updateAt": now,
+	}
+
+	if x.Session != nil {
+		var session = *x.Session
+		if session.Issuer != nil {
+			set["session.issuer"] = *session.Issuer
+		}
+
+		if session.CheckIp != nil {
+			set["session.checkIp"] = *session.CheckIp
+		}
+
+		if session.ExpireAt != nil {
+			set["session.expireAt"] = *session.ExpireAt
+		}
+
+		if session.CheckUserAgent != nil {
+			set["session.checkUserAgent"] = *session.CheckUserAgent
+		}
+	}
+
+	if len(set) == 1 {
+		err = fmt.Errorf(
+			"empty update value: iUpdateSystem=%s",
+			fnLogger.ToJsonP(x),
+		)
+		return
+	}
+
+	update = bson.M{
+		"$set": set,
+	}
+
+	return
+}
+
+func UpdateSystem(ctx context.Context, i *IUpdateSystem) (sys *DocSystem, err error) {
+	var col = mango.GetColP(ctx, docSystem)
+	var update bson.M
+	if update, err = i.Update(); err != nil {
+		return
+	}
+
+	if _, err = col.UpdateOne(
+		ctx,
+		bson.M{
+			"_id": primitive.NilObjectID,
+		},
+		update,
+	); err != nil {
+		return
+	}
+
+	return ReadSystem(ctx)
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */

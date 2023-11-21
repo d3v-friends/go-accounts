@@ -2,7 +2,6 @@ package docs_test
 
 import (
 	"fmt"
-	"github.com/brianvoe/gofakeit"
 	"github.com/d3v-friends/go-accounts/docs"
 	"github.com/d3v-friends/go-pure/fnMatch"
 	"github.com/d3v-friends/go-pure/fnPanic"
@@ -10,7 +9,6 @@ import (
 	"github.com/d3v-friends/mango/mType"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
-	"math/rand"
 	"testing"
 )
 

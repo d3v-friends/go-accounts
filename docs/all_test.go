@@ -14,7 +14,8 @@ import (
 )
 
 type Tester struct {
-	Mango *mango.Mango
+	Mango     *mango.Mango
+	DocSystem *docs.DocSystem
 }
 
 func (x *Tester) Context() (ctx context.Context) {
@@ -22,6 +23,7 @@ func (x *Tester) Context() (ctx context.Context) {
 	ctx = mango.SetMango(ctx, x.Mango)
 	ctx = docs.SetJwtSecret(ctx, fnEnv.Read("JWT_SECRET"))
 	ctx = docs.SetJwtIssuer(ctx, "all_test")
+	ctx = docs.SetDocSystem(ctx, x.DocSystem)
 	return
 }
 
@@ -45,6 +47,7 @@ func (x *Tester) NewAccount() (res *docs.Account) {
 		},
 		Data: make([]byte, 0),
 	}
+
 	return
 }
 
@@ -70,7 +73,10 @@ func NewTester(truncates ...bool) (res *Tester) {
 		&docs.DocAccount{},
 		&docs.DocSystem{},
 		&docs.DocSession{},
+		&mango.DocKv[any]{},
 	))
+
+	res.DocSystem = fnPanic.Get(docs.ReadSystem(ctx))
 
 	return
 }
