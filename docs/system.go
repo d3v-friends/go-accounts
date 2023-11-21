@@ -4,41 +4,39 @@ import (
 	"context"
 	"fmt"
 	"github.com/d3v-friends/go-pure/fnCtx"
-	"github.com/d3v-friends/go-pure/fnLogger"
-	"github.com/d3v-friends/go-pure/fnReflect"
 	"github.com/d3v-friends/mango"
 	"github.com/d3v-friends/mango/mMigrate"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"math/rand"
 	"time"
 )
 
 const (
-	docSystem = "systems"
-)
-
-var (
-	docSystemId = primitive.NilObjectID
+	docSystem       = "systems"
+	keySession      = "session"
+	keyAccountIndex = "accountIndex"
 )
 
 type (
-	DocSystem mango.MDoc[System]
+	DocSystem struct{}
 
-	System struct {
-		Session *SystemSession `bson:"session"`
-	}
-
-	SystemSession struct {
+	KvSession struct {
+		JwtSecret      string        `bson:"jwtSecret"`
 		Issuer         string        `bson:"issuer"`
 		ExpireAt       time.Duration `bson:"expireAt"`
 		CheckIp        bool          `bson:"checkIp"`
 		CheckUserAgent bool          `bson:"checkUserAgent"`
 	}
+
+	KvAccountIndex struct {
+		Identifier []string
+		Property   []string
+	}
 )
 
 func (x *DocSystem) GetID() primitive.ObjectID {
-	return x.Id
+	return primitive.NilObjectID
 }
 
 func (x *DocSystem) GetColNm() string {
@@ -51,138 +49,45 @@ func (x *DocSystem) GetMigrateList() mMigrate.FnMigrateList {
 
 var mgSystem = mMigrate.FnMigrateList{
 	func(ctx context.Context, col *mongo.Collection) (memo string, err error) {
-		memo = "create init system"
-		var model = mango.NewDoc[System](docSystem, &System{
-			Session: &SystemSession{
-				Issuer:         GetJwtIssuer(ctx),
-				ExpireAt:       -1,
-				CheckIp:        false,
-				CheckUserAgent: true,
-			},
-		})
+		memo = "create system key_values"
 
-		err = model.Save(ctx)
+		if _, err = mango.SetKv[KvSession](ctx, keySession, &KvSession{
+			JwtSecret:      fmt.Sprintf("%12d", rand.Int63()),
+			Issuer:         "go-accounts",
+			ExpireAt:       -1,
+			CheckIp:        false,
+			CheckUserAgent: true,
+		}); err != nil {
+			return
+		}
+
+		if _, err = mango.SetKv[KvAccountIndex](ctx, keyAccountIndex, &KvAccountIndex{
+			Identifier: []string{},
+			Property:   []string{},
+		}); err != nil {
+			return
+		}
+
 		return
 	},
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
 
-type IReadSystem struct {
+func GetKvSession(ctx context.Context) (res *KvSession, err error) {
+	return mango.GetKv[KvSession](ctx, keySession)
 }
 
-func (x *IReadSystem) Filter() (res bson.M, _ error) {
-	res = bson.M{
-		"_id": docSystemId,
-	}
-	return
-}
-
-func (x *IReadSystem) ColNm() string {
-	return docSystem
-}
-
-func ReadSystem(ctx context.Context) (res *DocSystem, err error) {
-	var system *mango.MDoc[System]
-	if system, err = mango.ReadOneM[System](ctx, &IReadSystem{}); err != nil {
-		return
-	}
-	res = fnReflect.ToPointer(DocSystem(*system))
+func SetKvSession(ctx context.Context, v *KvSession) (err error) {
+	_, err = mango.SetKv[KvSession](ctx, keySession, v)
 	return
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */
 
-type (
-	IUpdateSystem struct {
-		Session *IUpdateSystemSession
-	}
+const ctxKvSession = "CTX_KV_SESSION"
 
-	IUpdateSystemSession struct {
-		Issuer         *string
-		ExpireAt       *time.Duration
-		CheckIp        *bool
-		CheckUserAgent *bool
-	}
-)
-
-func (x IUpdateSystem) Update() (update bson.M, err error) {
-	var now = time.Now()
-	var set = bson.M{
-		"updateAt": now,
-	}
-
-	if x.Session != nil {
-		var session = *x.Session
-		if session.Issuer != nil {
-			set["session.issuer"] = *session.Issuer
-		}
-
-		if session.CheckIp != nil {
-			set["session.checkIp"] = *session.CheckIp
-		}
-
-		if session.ExpireAt != nil {
-			set["session.expireAt"] = *session.ExpireAt
-		}
-
-		if session.CheckUserAgent != nil {
-			set["session.checkUserAgent"] = *session.CheckUserAgent
-		}
-	}
-
-	if len(set) == 1 {
-		err = fmt.Errorf(
-			"empty update value: iUpdateSystem=%s",
-			fnLogger.ToJsonP(x),
-		)
-		return
-	}
-
-	update = bson.M{
-		"$set": set,
-	}
-
-	return
-}
-
-func UpdateSystem(ctx context.Context, i *IUpdateSystem) (sys *DocSystem, err error) {
-	var col = mango.GetColP(ctx, docSystem)
-	var update bson.M
-	if update, err = i.Update(); err != nil {
-		return
-	}
-
-	if _, err = col.UpdateOne(
-		ctx,
-		bson.M{
-			"_id": primitive.NilObjectID,
-		},
-		update,
-	); err != nil {
-		return
-	}
-
-	return ReadSystem(ctx)
-}
+var GetCtxKvSession = fnCtx.GetFnP[*KvSession](ctxKvSession)
+var SetCtxKvSession = fnCtx.SetFn[*KvSession](ctxKvSession)
 
 /* ------------------------------------------------------------------------------------------------------------ */
-
-const ctxDocSystem = "CTX_DOC_SYSTEM"
-
-var SetDocSystem = fnCtx.SetFn[*DocSystem](ctxDocSystem)
-var GetDocSystem = fnCtx.GetFnP[*DocSystem](ctxDocSystem)
-
-/* ------------------------------------------------------------------------------------------------------------ */
-
-const ctxJwtSecret = "CTX_JWT_SECRET"
-
-var SetJwtSecret = fnCtx.SetFn[string](ctxJwtSecret)
-var GetJwtSecret = fnCtx.GetFnP[string](ctxJwtSecret)
-
-/* ------------------------------------------------------------------------------------------------------------ */
-
-const ctxJwtIssuer = "CTX_JWT_ISSUER"
-
-var SetJwtIssuer = fnCtx.SetFn[string](ctxJwtIssuer)
-var GetJwtIssuer = fnCtx.GetFnP[string](ctxJwtIssuer)

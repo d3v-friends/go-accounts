@@ -152,12 +152,11 @@ func CreateSession(
 		return
 	}
 
-	var docSystem = GetDocSystem(ctx)
-	var jwtSecret = GetJwtSecret(ctx)
+	var sessionInfo = GetCtxKvSession(ctx)
 	var v1 = fnJWT.NewV1[DocSession](
-		jwtSecret,
-		docSystem.Data.Session.Issuer,
-		docSystem.Data.Session.ExpireAt,
+		sessionInfo.JwtSecret,
+		sessionInfo.Issuer,
+		sessionInfo.ExpireAt,
 	)
 
 	if token, err = v1.Encode(*doc); err != nil {
@@ -179,12 +178,11 @@ func VerifySession(
 	ctx context.Context,
 	i *IVerifySession,
 ) (account *DocAccount, err error) {
-	var docSystem = GetDocSystem(ctx)
-	var jwtSecret = GetJwtSecret(ctx)
+	var sessionInfo = GetCtxKvSession(ctx)
 	var v1 = fnJWT.NewV1[DocSession](
-		jwtSecret,
-		docSystem.Data.Session.Issuer,
-		docSystem.Data.Session.ExpireAt,
+		sessionInfo.JwtSecret,
+		sessionInfo.Issuer,
+		sessionInfo.ExpireAt,
 	)
 
 	var claim *jwt.RegisteredClaims
@@ -199,8 +197,9 @@ func VerifySession(
 
 	var filter = &IReadSession{
 		SessionId:  sessionId,
-		IsActivate: true,
+		IsActivate: fnReflect.ToPointer(true),
 	}
+
 	var session *DocSession
 	if session, err = ReadOneSession(
 		ctx,
@@ -209,12 +208,12 @@ func VerifySession(
 		return
 	}
 
-	if docSystem.Data.Session.CheckIp && session.IP != i.Ip {
+	if sessionInfo.CheckIp && session.IP != i.Ip {
 		err = fmt.Errorf("invalid ip with session")
 		return
 	}
 
-	if docSystem.Data.Session.CheckUserAgent && session.UserAgent != i.UserAgent {
+	if sessionInfo.CheckUserAgent && session.UserAgent != i.UserAgent {
 		err = fmt.Errorf("invalid user_agent with session")
 		return
 	}
@@ -236,14 +235,18 @@ func VerifySession(
 
 type IReadSession struct {
 	SessionId  primitive.ObjectID
-	IsActivate bool
+	IsActivate *bool
 }
 
 func (x IReadSession) Filter() (res bson.M, _ error) {
 	res = bson.M{
-		"_id":        x.SessionId,
-		"isActivate": x.IsActivate,
+		"_id": x.SessionId,
 	}
+
+	if x.IsActivate != nil {
+		res["isActivate"] = *x.IsActivate
+	}
+
 	return
 }
 

@@ -14,16 +14,13 @@ import (
 )
 
 type Tester struct {
-	Mango     *mango.Mango
-	DocSystem *docs.DocSystem
+	Mango *mango.Mango
 }
 
 func (x *Tester) Context() (ctx context.Context) {
 	ctx = context.TODO()
 	ctx = mango.SetMango(ctx, x.Mango)
-	ctx = docs.SetJwtSecret(ctx, fnEnv.Read("JWT_SECRET"))
-	ctx = docs.SetJwtIssuer(ctx, "all_test")
-	ctx = docs.SetDocSystem(ctx, x.DocSystem)
+	ctx = docs.SetCtxKvSession(ctx, fnPanic.Get(docs.GetKvSession(ctx)))
 	return
 }
 
@@ -63,7 +60,7 @@ func NewTester(truncates ...bool) (res *Tester) {
 		SetRegistry: mCodec.RegisterDecimal,
 	}))
 
-	var ctx = res.Context()
+	var ctx = mango.SetMango(context.TODO(), res.Mango)
 	if fnParams.Get(truncates) {
 		fnPanic.On(res.Mango.DB.Drop(ctx))
 	}
@@ -75,8 +72,6 @@ func NewTester(truncates ...bool) (res *Tester) {
 		&docs.DocSession{},
 		&mango.DocKv[any]{},
 	))
-
-	res.DocSystem = fnPanic.Get(docs.ReadSystem(ctx))
 
 	return
 }
