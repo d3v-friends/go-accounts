@@ -20,7 +20,10 @@ const (
 )
 
 type (
-	DocAccount mango.MDoc[Account]
+	DocAccount  mango.MDoc[Account]
+	IdKey       string
+	PropKey     string
+	VerifierKey string
 
 	Account struct {
 		IsActivate bool                        `bson:"isActivate"`
